@@ -1,0 +1,22 @@
+apis:
+  polymarket:
+    base_url: "https://gamma-api.polymarket.com"
+    timeout: 30
+
+  kalshi:
+    base_url: "https://demo-api.kalshi.co"
+    api_key: "${KALSHI_API_KEY}"
+    timeout: 30
+
+matching:
+  min_confidence: 0.8
+  use_semantic: true
+  semantic_model: "all-MiniLM-L6-v2"
+
+arbitrage:
+  min_profit_pct: 2.0
+  min_liquidity: 100
+  check_interval: 30
+
+notifications:
+  discord_webhook: "${DISCORD_WEBHOOK}"
