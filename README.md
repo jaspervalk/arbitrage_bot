@@ -1,80 +1,122 @@
-# Arbitrage Detection Bot
+# Arbitrage Bot
 
-Automatische detectie van arbitrage kansen tussen Polymarket en Kalshi prediction markets.
+Automated arbitrage detection bot for prediction markets (Polymarket & Kalshi) made by Jasper Buffet, Mark Burry and Duco Munger.
 
-## Installatie
+## Features
 
+- Real-time market data from Polymarket and Kalshi
+- Fuzzy text matching to find equivalent markets across platforms
+- Automatic arbitrage opportunity detection (2%+ profit threshold)
+- Discord webhook notifications
+- Price validation and liquidity filtering
+
+## Setup
+
+1. Install dependencies:
 ```bash
+cd arbitrage_bot
 pip install -r requirements.txt
 ```
 
-## Configuratie
-
-1. Kopieer `.env.example` naar `.env`:
+2. Configure credentials in `.env`:
 ```bash
-cp .env.example .env
+KALSHI_API_KEY_ID=your_api_key_id
+KALSHI_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+DISCORD_WEBHOOK=https://discord.com/api/webhooks/...
 ```
 
-2. Vul optionele credentials in `.env`:
+3. Adjust settings in `config.yaml`:
+```yaml
+arbitrage:
+  min_profit_pct: 2.0      # Minimum 2% profit to report
+  min_liquidity: 500       # Minimum $500 liquidity
+  check_interval: 30       # Check every 30 seconds
+
+matching:
+  min_confidence: 0.65     # 65% similarity threshold
 ```
-KALSHI_EMAIL=your_email
-KALSHI_PASSWORD=your_password
-DISCORD_WEBHOOK=your_webhook_url
-```
 
-3. Pas `config.yaml` aan naar wens (min profit, liquidity thresholds, etc.)
+## Usage
 
-## Gebruik
-
-### Eenmalige scan
+### Test with Mock Data
+See a guaranteed 27% arbitrage opportunity:
 ```bash
-python -m src.main --once
+python test_bot.py --mock
 ```
 
-### Continue monitoring
+### Test with Real APIs
+Fetch live markets and check for opportunities:
+```bash
+python test_bot.py
+```
+
+### Run Continuous Monitoring
+Check for opportunities every 30 seconds:
 ```bash
 python -m src.main --continuous
 ```
 
-### Custom check interval
+Or run once:
 ```bash
-python -m src.main --continuous --interval 60
+python -m src.main --once
 ```
 
-## Hoe het werkt
+## How It Works
 
-1. **API Clients**: Haalt markets op van Polymarket en Kalshi
-2. **Text Normalization**: Normaliseert market vragen voor matching
-3. **Semantic Matching**: Matcht vergelijkbare markets met fuzzy + semantic similarity
-4. **Arbitrage Calculation**: Berekent of combined probabilities < 100% zijn
-5. **Alert**: Logt gevonden opportunities
+1. **Fetch Markets**: Retrieves active markets from Polymarket and Kalshi
+2. **Match Markets**: Uses fuzzy text matching to find equivalent markets
+3. **Calculate Arbitrage**: Checks if buying YES on one platform + NO on another guarantees profit
+4. **Notify**: Sends Discord notification when opportunities are found
 
-## Project Structuur
+### Example Arbitrage
+
+If the same event has different prices on each platform:
+
+- **Polymarket**: YES = $0.35, NO = $0.65
+- **Kalshi**: YES = $0.62, NO = $0.38
+
+**Strategy**: Buy YES on Polymarket ($0.35) + Buy NO on Kalshi ($0.38)
+- **Cost**: $0.73
+- **Payout**: $1.00 (guaranteed)
+- **Profit**: $0.27 (27%)
+
+No matter the outcome, one position pays $1.00!
+
+## Project Structure
 
 ```
 arbitrage_bot/
+├── config.yaml              # Configuration settings
+├── .env                     # API credentials (not in git)
+├── test_bot.py             # Testing script
 ├── src/
-│   ├── api/              # API clients
-│   ├── matching/         # Market matching logic
-│   ├── arbitrage/        # Arbitrage calculation
-│   ├── utils/            # Config & logging
-│   └── main.py          # Entry point
-├── tests/               # Tests
-├── config.yaml          # Configuration
-└── requirements.txt     # Dependencies
+│   ├── main.py             # Entry point
+│   ├── api/
+│   │   ├── polymarket.py   # Polymarket API client
+│   │   └── kalshi.py       # Kalshi API client (JWT auth)
+│   ├── matching/
+│   │   ├── semantic_matcher.py  # Market matching logic
+│   │   └── normalizer.py        # Text normalization
+│   ├── arbitrage/
+│   │   ├── detector.py     # Orchestrates detection
+│   │   └── calculator.py   # Arbitrage math
+│   └── utils/
+│       ├── config.py       # Config loader
+│       ├── logger.py       # Logging
+│       └── notifier.py     # Discord notifications
 ```
 
-## Testing
+## Current Status
 
-Test API clients:
-```bash
-python tests/test_api_clients.py
-```
+The bot is **fully functional** but currently finds 0 opportunities because:
+- Polymarket focuses on politics, economics, crypto
+- Kalshi currently only has sports betting markets
+- No overlap = no arbitrage opportunities
 
-## Notes
+The bot will automatically detect opportunities when the platforms offer the same events.
 
-- Demo API wordt gebruikt voor Kalshi (geen authenticatie nodig)
-- Semantic matching gebruikt sentence-transformers model
-- Minimum profit threshold voorkomt false positives
-- Caching voorkomt rate limiting
+## Security
 
+- `.env` file is in `.gitignore` (never commit credentials!)
+- API keys stored as environment variables
+- RSA private key authentication for Kalshi
