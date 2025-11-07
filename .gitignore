@@ -30,7 +30,9 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-USAGE.md/
+
+# Usage documentation
+USAGE.md
 
 # Virtual environments
 venv/
