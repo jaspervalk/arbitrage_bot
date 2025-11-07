@@ -24,7 +24,7 @@ def create_mock_markets():
         Market(
             platform="polymarket",
             market_id="mock_poly_1",
-            question="Will Bitcoin hit $100k by end of 2024?",
+            question="Will Bitcoin reach $100,000 by end of 2024?",
             yes_price=0.35,  # 35 cents to buy YES
             no_price=0.65,   # 65 cents to buy NO
             volume=50000,
@@ -39,7 +39,7 @@ def create_mock_markets():
         Market(
             platform="kalshi",
             market_id="mock_kalshi_1",
-            question="Bitcoin reaches $100,000 by December 31, 2024",
+            question="Bitcoin reaches $100,000 by end of 2024?",
             yes_price=0.62,  # 62 cents to buy YES
             no_price=0.38,   # 38 cents to buy NO
             volume=25000,
@@ -107,6 +107,11 @@ def test_mock_data():
     logger.info(f"    YES: ${polymarket_markets[0].yes_price:.2f}, NO: ${polymarket_markets[0].no_price:.2f}")
     logger.info(f"  Kalshi: {kalshi_markets[0].question}")
     logger.info(f"    YES: ${kalshi_markets[0].yes_price:.2f}, NO: ${kalshi_markets[0].no_price:.2f}")
+    logger.info("")
+    logger.info("Expected Arbitrage:")
+    logger.info(f"  Buy YES on Polymarket (${polymarket_markets[0].yes_price:.2f}) + Buy NO on Kalshi (${kalshi_markets[0].no_price:.2f})")
+    logger.info(f"  Total cost: ${polymarket_markets[0].yes_price + kalshi_markets[0].no_price:.2f} → Guaranteed payout: $1.00")
+    logger.info(f"  Profit: ${1.0 - (polymarket_markets[0].yes_price + kalshi_markets[0].no_price):.2f} ({(1.0 - (polymarket_markets[0].yes_price + kalshi_markets[0].no_price)) * 100:.1f}%)")
     logger.info("")
 
     return polymarket_markets, kalshi_markets
