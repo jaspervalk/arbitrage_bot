@@ -4,8 +4,9 @@ apis:
     timeout: 30
 
   kalshi:
-    base_url: "https://demo-api.kalshi.co"
-    api_key: "${KALSHI_API_KEY}"
+    base_url: "https://api.kalshi.co"
+    api_key_id: "${KALSHI_API_KEY_ID}"
+    private_key: "${KALSHI_PRIVATE_KEY}"
     timeout: 30
 
 matching:
