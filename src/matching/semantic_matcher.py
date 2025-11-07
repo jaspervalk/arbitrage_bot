@@ -89,4 +89,8 @@ class SemanticMatcher:
 
         return MatchResult(market_a, market_b, confidence, fuzzy_score, semantic_score)
 
-matcher = SemanticMatcher()
+from ..utils.config import config
+matcher = SemanticMatcher(
+    min_confidence=config.get("matching", "min_confidence"),
+    use_semantic=config.get("matching", "use_semantic")
+)

@@ -4,19 +4,19 @@ apis:
     timeout: 30
 
   kalshi:
-    base_url: "https://api.kalshi.co"
+    base_url: "https://api.elections.kalshi.com"
     api_key_id: "${KALSHI_API_KEY_ID}"
     private_key: "${KALSHI_PRIVATE_KEY}"
     timeout: 30
 
 matching:
-  min_confidence: 0.8
-  use_semantic: true
+  min_confidence: 0.65
+  use_semantic: false
   semantic_model: "all-MiniLM-L6-v2"
 
 arbitrage:
   min_profit_pct: 2.0
-  min_liquidity: 100
+  min_liquidity: 500
   check_interval: 30
 
 notifications:

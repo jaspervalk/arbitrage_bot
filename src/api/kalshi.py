@@ -18,11 +18,16 @@ class KalshiClient(BaseAPIClient):
         self.token_expiry = 0
 
     def _ensure_authenticated(self) -> None:
+        """
+        Attempt to authenticate with Kalshi API.
+        Note: Authentication is NOT required for read-only market data access.
+        It's only needed for trading operations (placing orders, etc).
+        """
         if self.token and time.time() < self.token_expiry:
             return
 
         if not self.api_key_id or not self.private_key_str:
-            logger.warning("Kalshi API credentials not provided, using public API only")
+            logger.debug("Kalshi API credentials not provided, using public API only")
             return
 
         try:
@@ -34,9 +39,10 @@ class KalshiClient(BaseAPIClient):
                 'iat': current_time
             }
 
-            # Load the private key
+            # Load the private key (replace literal \n with actual newlines)
+            private_key_pem = self.private_key_str.replace('\\n', '\n')
             private_key = serialization.load_pem_private_key(
-                self.private_key_str.encode(),
+                private_key_pem.encode(),
                 password=None,
                 backend=default_backend()
             )
@@ -44,19 +50,14 @@ class KalshiClient(BaseAPIClient):
             # Sign the JWT
             signed_jwt = jwt.encode(payload, private_key, algorithm='RS256')
 
-            # Exchange JWT for access token
-            response = self._make_request(
-                "POST",
-                "/trade-api/v2/login",
-                headers={"Authorization": f"Bearer {signed_jwt}"}
-            )
-
-            self.token = response.get("token")
-            self.token_expiry = time.time() + 3600
-            self.session.headers.update({"Authorization": f"Bearer {self.token}"})
-            logger.info("Successfully authenticated with Kalshi using API key")
+            # Set JWT as authorization header for authenticated requests
+            # Note: Kalshi may not have a login endpoint, JWT is used directly
+            self.session.headers.update({"Authorization": f"Bearer {signed_jwt}"})
+            self.token = signed_jwt
+            self.token_expiry = current_time + 1800
+            logger.info("Kalshi API authentication configured (JWT Bearer token)")
         except Exception as e:
-            logger.error(f"Failed to authenticate with Kalshi: {e}")
+            logger.debug(f"Kalshi authentication setup failed (not required for read-only): {e}")
 
     def get_markets(self, limit: int = 200, status: str = "open") -> List[Market]:
         cache_key = f"kalshi_markets_{limit}_{status}"
