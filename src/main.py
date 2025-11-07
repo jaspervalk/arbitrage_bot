@@ -1,7 +1,7 @@
 import time
 import argparse
 from .arbitrage import detector
-from .utils import config, logger
+from .utils import config, logger, notifier
 
 def run_once():
     logger.info("Starting arbitrage detection run...")
@@ -11,7 +11,10 @@ def run_once():
     if opportunities:
         logger.info(f"\nFound {len(opportunities)} arbitrage opportunities:\n")
         for opp in opportunities:
-            print(detector.format_opportunity(opp))
+            formatted_opp = detector.format_opportunity(opp)
+            print(formatted_opp)
+            # Send Discord notification for each opportunity
+            notifier.send_arbitrage_opportunity(formatted_opp)
     else:
         logger.info("No arbitrage opportunities found")
 

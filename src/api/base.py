@@ -54,7 +54,15 @@ class BaseAPIClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            logger.error(f"Request failed for {url}: {e}")
+            # Log response body for debugging authentication issues
+            try:
+                error_body = e.response.text if hasattr(e, 'response') and e.response else None
+                if error_body:
+                    logger.error(f"Request failed for {url}: {e} - Response: {error_body}")
+                else:
+                    logger.error(f"Request failed for {url}: {e}")
+            except:
+                logger.error(f"Request failed for {url}: {e}")
             raise
 
     def get_markets(self):

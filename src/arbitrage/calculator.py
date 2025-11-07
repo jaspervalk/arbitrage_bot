@@ -23,6 +23,18 @@ class ArbitrageCalculator:
     def calculate(self, market_a: Market, market_b: Market,
                   match_confidence: float) -> Optional[ArbitrageResult]:
 
+        # Reject markets with invalid prices (must have real bids/asks)
+        if market_a.yes_price <= 0 or market_a.no_price <= 0:
+            return None
+        if market_b.yes_price <= 0 or market_b.no_price <= 0:
+            return None
+
+        # Reject markets with prices that don't sum close to 1.0 (invalid data)
+        sum_a = market_a.yes_price + market_a.no_price
+        sum_b = market_b.yes_price + market_b.no_price
+        if sum_a < 0.95 or sum_a > 1.05 or sum_b < 0.95 or sum_b > 1.05:
+            return None
+
         if market_a.liquidity and market_a.liquidity < self.min_liquidity:
             return None
         if market_b.liquidity and market_b.liquidity < self.min_liquidity:
