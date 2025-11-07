@@ -3,12 +3,17 @@ from datetime import datetime
 from .base import BaseAPIClient, Market
 from ..utils.logger import logger
 import time
+import jwt
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
 
 class KalshiClient(BaseAPIClient):
-    def __init__(self, base_url: str, timeout: int = 30, email: Optional[str] = None, password: Optional[str] = None):
+    def __init__(self, base_url: str, timeout: int = 30,
+                 api_key_id: Optional[str] = None,
+                 private_key_str: Optional[str] = None):
         super().__init__(base_url, timeout)
-        self.email = email
-        self.password = password
+        self.api_key_id = api_key_id
+        self.private_key_str = private_key_str
         self.token = None
         self.token_expiry = 0
 
@@ -16,20 +21,40 @@ class KalshiClient(BaseAPIClient):
         if self.token and time.time() < self.token_expiry:
             return
 
-        if not self.email or not self.password:
-            logger.warning("Kalshi credentials not provided, using public API only")
+        if not self.api_key_id or not self.private_key_str:
+            logger.warning("Kalshi API credentials not provided, using public API only")
             return
 
         try:
+            # Generate JWT token signed with private key
+            current_time = int(time.time())
+            payload = {
+                'iss': self.api_key_id,
+                'exp': current_time + 1800,  # 30 minutes expiry
+                'iat': current_time
+            }
+
+            # Load the private key
+            private_key = serialization.load_pem_private_key(
+                self.private_key_str.encode(),
+                password=None,
+                backend=default_backend()
+            )
+
+            # Sign the JWT
+            signed_jwt = jwt.encode(payload, private_key, algorithm='RS256')
+
+            # Exchange JWT for access token
             response = self._make_request(
                 "POST",
                 "/trade-api/v2/login",
-                json={"email": self.email, "password": self.password}
+                headers={"Authorization": f"Bearer {signed_jwt}"}
             )
+
             self.token = response.get("token")
             self.token_expiry = time.time() + 3600
             self.session.headers.update({"Authorization": f"Bearer {self.token}"})
-            logger.info("Successfully authenticated with Kalshi")
+            logger.info("Successfully authenticated with Kalshi using API key")
         except Exception as e:
             logger.error(f"Failed to authenticate with Kalshi: {e}")
 

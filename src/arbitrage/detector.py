@@ -11,14 +11,14 @@ class ArbitrageDetector:
             timeout=config.get("apis", "polymarket", "timeout")
         )
 
-        kalshi_email = config.get("apis", "kalshi", "api_key") or None
-        kalshi_password = None
+        kalshi_api_key_id = config.get("apis", "kalshi", "api_key_id") or None
+        kalshi_private_key = config.get("apis", "kalshi", "private_key") or None
 
         self.kalshi = KalshiClient(
             base_url=config.get("apis", "kalshi", "base_url"),
             timeout=config.get("apis", "kalshi", "timeout"),
-            email=kalshi_email,
-            password=kalshi_password
+            api_key_id=kalshi_api_key_id,
+            private_key_str=kalshi_private_key
         )
 
         self.min_profit = config.get("arbitrage", "min_profit_pct")
