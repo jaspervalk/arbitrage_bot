@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Manual test script for the arbitrage bot.
 
@@ -8,6 +8,7 @@ Usage:
 """
 
 import sys
+import asyncio
 import argparse
 from src.api import PolymarketClient, KalshiClient, Market
 from src.matching.semantic_matcher import matcher
@@ -58,7 +59,7 @@ def create_mock_markets():
 
     return polymarket_markets, kalshi_markets
 
-def test_real_apis():
+async def test_real_apis():
     """Test with real API data"""
     logger.info("=" * 60)
     logger.info("TESTING WITH REAL APIs")
@@ -80,16 +81,24 @@ def test_real_apis():
         private_key_str=kalshi_private_key
     )
 
-    # Fetch real markets
-    logger.info("Fetching Polymarket markets...")
-    polymarket_markets = polymarket_client.get_markets()
-    logger.info(f"✓ Got {len(polymarket_markets)} Polymarket markets")
+    all_polymarket_markets = []
+    all_kalshi_markets = []
 
-    logger.info("Fetching Kalshi markets...")
-    kalshi_markets = kalshi_client.get_markets()
-    logger.info(f"✓ Got {len(kalshi_markets)} Kalshi markets")
+    for category in ["politics", "economy", "crypto", "sports"]:
+        try:
+            logger.info(f"Fetching {category} markets from Polymarket...")
+            poly_markets = await polymarket_client.get_markets_by_category(category, limit=100)
+            all_polymarket_markets.extend(poly_markets)
+            logger.info(f"✓ Got {len(poly_markets)} Polymarket {category} markets")
 
-    return polymarket_markets, kalshi_markets
+            logger.info(f"Fetching {category} markets from Kalshi...")
+            kalshi_markets = await kalshi_client.get_markets_by_category(category, limit=200)
+            all_kalshi_markets.extend(kalshi_markets)
+            logger.info(f"✓ Got {len(kalshi_markets)} Kalshi {category} markets")
+        except Exception as e:
+            logger.error(f"Failed to fetch {category} markets: {e}")
+
+    return all_polymarket_markets, all_kalshi_markets
 
 def test_mock_data():
     """Test with mock data that has a guaranteed arbitrage opportunity"""
@@ -202,7 +211,7 @@ def run_arbitrage_test(polymarket_markets, kalshi_markets):
         logger.info(f"  → {strategy['explanation']}")
         logger.info("")
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(description="Test the arbitrage bot")
     parser.add_argument("--mock", action="store_true", help="Use mock data instead of real APIs")
     args = parser.parse_args()
@@ -211,7 +220,7 @@ def main():
         if args.mock:
             polymarket_markets, kalshi_markets = test_mock_data()
         else:
-            polymarket_markets, kalshi_markets = test_real_apis()
+            polymarket_markets, kalshi_markets = await test_real_apis()
 
         run_arbitrage_test(polymarket_markets, kalshi_markets)
 
@@ -224,4 +233,4 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

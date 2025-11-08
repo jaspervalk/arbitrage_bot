@@ -1,10 +1,10 @@
 apis:
   polymarket:
-    base_url: "https://gamma-api.polymarket.com"
+    base_url: "https://matic-poly.market"
     timeout: 30
 
   kalshi:
-    base_url: "https://api.elections.kalshi.com"
+    base_url: "https://trading-api.kalshi.com"
     api_key_id: "${KALSHI_API_KEY_ID}"
     private_key: "${KALSHI_PRIVATE_KEY}"
     timeout: 30
