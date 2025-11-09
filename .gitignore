@@ -3,8 +3,6 @@
 .env.local
 .env.*.local
 
-# Claude Code configuration
-.claude/
 
 # Python
 __pycache__/
@@ -93,3 +91,5 @@ logs/
 *.tmp
 *.temp
 .cache/
+# Claude Code configuration
+.claude/

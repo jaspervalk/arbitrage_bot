@@ -11,7 +11,7 @@ apis:
 
 matching:
   min_confidence: 0.65
-  use_semantic: false
+  use_semantic: true
   semantic_model: "all-MiniLM-L6-v2"
 
 arbitrage:
