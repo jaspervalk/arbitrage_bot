@@ -1,4 +1,4 @@
-# Environment variables (sensitive credentials)
+# Environment variables
 .env
 .env.local
 .env.*.local
@@ -29,7 +29,7 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Usage documentation
+
 USAGE.md
 
 # Virtual environments
@@ -46,7 +46,7 @@ env/
 *~
 .DS_Store
 
-# Jupyter Notebook
+
 .ipynb_checkpoints
 
 # Testing
@@ -91,5 +91,5 @@ logs/
 *.tmp
 *.temp
 .cache/
-# Claude Code configuration
+
 .claude/
