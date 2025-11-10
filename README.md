@@ -1,3 +1,27 @@
+# Cross-Platform Market Matcher
+
+This module allows you to compare and log markets, events, and profiles between Kalshi and Polymarket using their public APIs.
+
+### How to Run
+
+**One-time scan:**
+```bash
+python cross_platform_runner.py --once --category Politics
+```
+
+**Continuous monitoring (every 60 seconds):**
+```bash
+python cross_platform_runner.py --watch 60 --category Politics
+```
+
+You can change the category (e.g., "Economy", "Crypto", "Sports") as needed.
+
+**What it does:**
+- Fetches all Kalshi series for the given category
+- For each series, searches Polymarket for related markets, events, and profiles using the series title
+- Logs all checked markets, events, and profiles, including reasons for non-matches
+
+This is useful for research, debugging, and monitoring cross-platform market overlap.
 # Arbitrage Bot
 
 Automated arbitrage detection bot for prediction markets (Polymarket & Kalshi) made by Jasper Buffet, Mark Burry and Duco Munger.
