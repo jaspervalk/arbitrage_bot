@@ -1,17 +1,17 @@
 apis:
   polymarket:
-    base_url: "https://gamma-api.polymarket.com"
+    base_url: "https://matic-poly.market"
     timeout: 30
 
   kalshi:
-    base_url: "https://api.elections.kalshi.com"
+    base_url: "https://trading-api.kalshi.com"
     api_key_id: "${KALSHI_API_KEY_ID}"
     private_key: "${KALSHI_PRIVATE_KEY}"
     timeout: 30
 
 matching:
   min_confidence: 0.65
-  use_semantic: true
+  use_semantic: false
   semantic_model: "all-MiniLM-L6-v2"
 
 arbitrage:

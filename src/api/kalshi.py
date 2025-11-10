@@ -1,13 +1,24 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
-from .base import BaseAPIClient, Market
-from ..utils.logger import logger
+import aiohttp
+import asyncio
 import time
 import jwt
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
+from .base import BaseAPIClient, Market
+from ..utils.logger import logger
+from ..core import cache
 
 class KalshiClient(BaseAPIClient):
+    # Map our standard categories to Kalshi series tags
+    CATEGORY_MAP = {
+        "politics": ["POLITICS", "ELECTORAL"],
+        "economy": ["ECONOMIC", "FED", "MACRO"],
+        "crypto": ["CRYPTO"],
+        "sports": ["SPORTS", "NFL", "NBA", "MLB", "NHL"],
+    }
+
     def __init__(self, base_url: str, timeout: int = 30,
                  api_key_id: Optional[str] = None,
                  private_key_str: Optional[str] = None):
@@ -17,12 +28,21 @@ class KalshiClient(BaseAPIClient):
         self.token = None
         self.token_expiry = 0
 
+    async def _make_async_request(self, session: aiohttp.ClientSession, 
+                                method: str, endpoint: str, **kwargs) -> Dict:
+        """Make an async HTTP request."""
+        url = f"{self.base_url}{endpoint}"
+        
+        try:
+            async with session.request(method, url, **kwargs) as response:
+                response.raise_for_status()
+                return await response.json()
+        except Exception as e:
+            logger.error(f"Async request failed for {url}: {e}")
+            raise
+
     def _ensure_authenticated(self) -> None:
-        """
-        Attempt to authenticate with Kalshi API.
-        Note: Authentication is NOT required for read-only market data access.
-        It's only needed for trading operations (placing orders, etc).
-        """
+        """Ensure we have a valid JWT token."""
         if self.token and time.time() < self.token_expiry:
             return
 
@@ -31,15 +51,13 @@ class KalshiClient(BaseAPIClient):
             return
 
         try:
-            # Generate JWT token signed with private key
             current_time = int(time.time())
             payload = {
                 'iss': self.api_key_id,
-                'exp': current_time + 1800,  # 30 minutes expiry
+                'exp': current_time + 1800,
                 'iat': current_time
             }
 
-            # Load the private key (replace literal \n with actual newlines)
             private_key_pem = self.private_key_str.replace('\\n', '\n')
             private_key = serialization.load_pem_private_key(
                 private_key_pem.encode(),
@@ -47,52 +65,102 @@ class KalshiClient(BaseAPIClient):
                 backend=default_backend()
             )
 
-            # Sign the JWT
             signed_jwt = jwt.encode(payload, private_key, algorithm='RS256')
-
-            # Set JWT as authorization header for authenticated requests
-            # Note: Kalshi may not have a login endpoint, JWT is used directly
-            self.session.headers.update({"Authorization": f"Bearer {signed_jwt}"})
             self.token = signed_jwt
             self.token_expiry = current_time + 1800
-            logger.info("Kalshi API authentication configured (JWT Bearer token)")
+            
+            logger.info("Kalshi API authentication configured")
+            
         except Exception as e:
-            logger.debug(f"Kalshi authentication setup failed (not required for read-only): {e}")
+            logger.error(f"Kalshi authentication failed: {e}")
+            raise
 
-    def get_markets(self, limit: int = 200, status: str = "open") -> List[Market]:
-        cache_key = f"kalshi_markets_{limit}_{status}"
-        cached = self._get_cached(cache_key)
+    async def get_series(self) -> List[Dict]:
+        """Fetch all market series from Kalshi."""
+        cache_key = "kalshi_series"
+        cached = cache.load_data(cache_key, max_age_hours=24)
         if cached:
             return cached
 
+        self._ensure_authenticated()
+        headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
+
+        async with aiohttp.ClientSession(headers=headers) as session:
+            data = await self._make_async_request(
+                session, "GET", "/trading-api/v2/series"
+            )
+            series = data.get("series", [])
+            cache.save_data(cache_key, series)
+            return series
+
+    async def get_markets_by_category(self, category: str, 
+                                    limit: int = 200) -> List[Market]:
+        """
+        Fetch markets for a specific category.
+        
+        Args:
+            category: Category to fetch markets for (politics, economy, crypto, sports)
+            limit: Maximum number of markets to fetch
+        """
+        cache_key = f"kalshi_markets_{category}_{limit}"
+        cached = cache.load_data(cache_key, max_age_hours=1)
+        if cached:
+            return [Market(**m) for m in cached]
+
         try:
             self._ensure_authenticated()
+            headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
 
-            endpoint = "/trade-api/v2/markets"
-            params = {
-                "limit": limit,
-                "status": status
-            }
+            # Get relevant series tags for category
+            category_tags = self.CATEGORY_MAP.get(category.lower(), [])
+            if not category_tags:
+                logger.warning(f"Unknown category: {category}")
+                return []
 
-            data = self._make_request("GET", endpoint, params=params)
-            market_data = data.get("markets", [])
+            # Get all series first
+            series = await self.get_series()
+            relevant_series = [
+                s for s in series
+                if any(tag in s.get("tags", []) for tag in category_tags)
+            ]
 
             markets = []
-            for item in market_data:
-                try:
-                    market = self._parse_market(item)
-                    if market:
-                        markets.append(market)
-                except Exception as e:
-                    logger.warning(f"Failed to parse Kalshi market: {e}")
-                    continue
+            async with aiohttp.ClientSession(headers=headers) as session:
+                for series_data in relevant_series:
+                    series_id = series_data["id"]
+                    
+                    # Fetch markets in this series
+                    endpoint = f"/trading-api/v2/markets"
+                    params = {
+                        "series_id": series_id,
+                        "status": "active",
+                        "limit": limit
+                    }
+                    
+                    try:
+                        data = await self._make_async_request(
+                            session, "GET", endpoint, params=params
+                        )
+                        
+                        for item in data.get("markets", []):
+                            market = self._parse_market(item)
+                            if market:
+                                markets.append(market)
+                                
+                            if len(markets) >= limit:
+                                break
+                                
+                    except Exception as e:
+                        logger.error(f"Failed to fetch markets for series {series_id}: {e}")
+                        continue
 
-            self._set_cache(cache_key, markets)
-            logger.info(f"Fetched {len(markets)} markets from Kalshi")
+            # Cache the results
+            cache.save_data(cache_key, [m.__dict__ for m in markets])
+            logger.info(f"Fetched {len(markets)} {category} markets from Kalshi")
             return markets
 
         except Exception as e:
-            logger.error(f"Failed to fetch Kalshi markets: {e}")
+            logger.error(f"Failed to fetch {category} markets from Kalshi: {e}")
             return []
 
     def _parse_market(self, data: dict) -> Optional[Market]:
